@@ -1,8 +1,16 @@
 const canvas = document.getElementById("myCanvas");
 const ctx = canvas.getContext("2d");
+var invaderSprites = new Image();
+var defenderSprite = new Image();
+invaderSprites.src = "images/aliens.png";
+defenderSprite.src = "images/ship.png";
 
 const Game = {
     logicboard: [],
+    hashkey: (p) => {
+        let hash = p.y* Game.columns + p.x;
+        return hash;
+    },
     init: function(){
 
     },
@@ -21,183 +29,146 @@ const Game = {
     }
 }
 
-function alien1(){
-    this.location = [300,300];
-    this.logic1 = [
-    [0,0,0,0,0,1,1,1,1,0,0,0,0,0],
-    [0,0,1,1,1,1,1,1,1,1,1,1,0,0],
-    [0,1,1,1,1,1,1,1,1,1,1,1,1,0],
-    [0,1,1,1,0,0,1,1,0,0,1,1,1,0],
-    [0,1,1,1,1,1,1,1,1,1,1,1,1,0],
-    [0,0,0,1,1,1,0,0,1,1,1,0,0,0],
-    [0,0,1,1,0,0,1,1,0,0,1,1,0,0],
-    [0,0,0,1,1,0,0,0,0,1,1,0,0,0]
-    ]
-
-    this.logic2 = [
-    [0,0,0,0,0,1,1,1,1,0,0,0,0,0],
-    [0,0,1,1,1,1,1,1,1,1,1,1,0,0],
-    [0,1,1,1,1,1,1,1,1,1,1,1,1,0],
-    [0,1,1,1,0,0,1,1,0,0,1,1,1,0],
-    [0,1,1,1,1,1,1,1,1,1,1,1,1,0],
-    [0,0,0,1,1,1,0,0,1,1,1,0,0,0],
-    [0,0,0,1,1,0,1,1,0,1,1,0,0,0],
-    [0,1,1,0,0,0,0,0,0,0,0,1,1,0]
-    ]
-    this.draw = (location) => {
-        ctx.fillStyle = 'green';
-        ctx.beginPath();
-        ctx.rect(this.location[0],this.location[1], 25,25);
-
-        ctx.fill();
-        ctx.closePath();
+function ufo(){
+    this.location = 0;
+    this.direction = 0;
+    this.draw = function(){
+        renderShapeFromLogic(alienShip.logic,alienShip.location,0,3,'red');
     }
-
-    this.shot = function(){
-        console.log('exploded!')
+    this.move = function(){
+        ctx.clearRect(0, 0, canvas.width, 21);
+        if(this.direction) this.location -= 3;
+        else this.location += 3;
+        if(this.location >= 950) this.direction = 1;
+        if(this.location <= 10) this.direction = 0;
     }
-}
-
-function alien2(){
-    this.logic1 = [
-        [0,0,0,1,0,0,0,0,0,1,0,0,0,0],
-        [0,0,0,0,1,0,0,0,1,0,0,0,0,0],
-        [0,0,0,1,1,1,1,1,1,1,0,0,0,0],
-        [0,0,1,1,0,1,1,1,0,1,1,0,0,0],
-        [0,1,1,1,1,1,1,1,1,1,1,1,0,0],
-        [0,1,0,1,1,1,1,1,1,1,0,1,0,0],
-        [0,1,0,1,0,0,0,0,0,1,0,1,0,0],
-        [0,0,0,0,1,1,0,1,1,0,0,0,0,0],
-    ]
-    this.logic2 = [
-        [0,0,0,1,0,0,0,0,0,1,0,0,0,0],
-        [0,1,0,0,1,0,0,0,1,0,0,1,0,0],
-        [0,1,0,1,1,1,1,1,1,1,0,1,0,0],
-        [0,1,1,1,0,1,1,1,0,1,1,1,0,0],
-        [0,1,1,1,1,1,1,1,1,1,1,1,0,0],
-        [0,0,1,1,1,1,1,1,1,1,1,0,0,0],
-        [0,0,0,1,0,0,0,0,0,1,0,0,0,0],
-        [0,0,1,0,0,0,0,0,0,0,1,0,0,0]
-    ]
-}
-
-function alien3(){
-    this.logic1 = [
-        [0,0,0,0,0,0,1,1,0,0,0,0,0,0],
-        [0,0,0,0,0,1,1,1,1,0,0,0,0,0],
-        [0,0,0,0,1,1,1,1,1,1,0,0,0,0],
-        [0,0,0,1,1,0,1,1,0,1,1,0,0,0],
-        [0,0,0,1,1,1,1,1,1,1,1,0,0,0],
-        [0,0,0,0,0,1,0,0,1,0,0,0,0,0],
-        [0,0,0,0,1,0,1,1,0,1,0,0,0,0],
-        [0,0,0,1,0,1,0,0,1,0,1,0,0,0]
-    ]
-    this.logic2 = [
-        [0,0,0,0,0,0,1,1,0,0,0,0,0,0],
-        [0,0,0,0,0,1,1,1,1,0,0,0,0,0],
-        [0,0,0,0,1,1,1,1,1,1,0,0,0,0],
-        [0,0,0,1,1,0,1,1,0,1,1,0,0,0],
-        [0,0,0,1,1,1,1,1,1,1,1,0,0,0],
-        [0,0,0,0,1,0,1,1,0,1,0,0,0,0],
-        [0,0,0,1,0,0,0,0,0,0,1,0,0,0],
-        [0,0,0,0,1,0,0,0,0,1,0,0,0,0]
+    this.logic = [
+        [0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0],
+        [0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0],
+        [0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0],
+        [0,1,1,0,1,1,0,1,1,0,1,1,0,1,1,0],
+        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+        [0,0,1,1,1,0,0,1,1,0,0,1,1,1,0,0],
+        [0,0,0,1,0,0,0,0,0,0,0,0,1,0,0,0]
     ]
 }
 function defender(){
+    this.logic = [
+        [0,0,0,0,0,0,1,0,0,0,0,0,0],
+        [0,0,0,0,0,1,1,1,0,0,0,0,0],
+        [0,0,0,0,0,1,1,1,0,0,0,0,0],
+        [0,1,1,1,1,1,1,1,1,1,1,1,0],
+        [1,1,1,1,1,1,1,1,1,1,1,1,1],
+        [1,1,1,1,1,1,1,1,1,1,1,1,1],
+        [1,1,1,1,1,1,1,1,1,1,1,1,1],
+        [1,1,1,1,1,1,1,1,1,1,1,1,1]
+    ]
+    
     this.location = canvas.width/2;
+    this.image = defenderSprite;
+    this.keyPressed = null;
 
     this.draw = function(){
-        ctx.clearRect(0,579,600,21);
-        ctx.fillStyle = 'red';
-        ctx.beginPath();
-        ctx.rect(this.location,580,75,20);
-        ctx.fill();
-        ctx.closePath();
+        ctx.clearRect(0,canvas.height - 25, canvas.width, 25);
+        ctx.drawImage(this.image,this.location, canvas.height - 25,39,24);
     };
 
     this.move = function(key){
         switch (key) {
             case 'ArrowLeft':
-                this.location -= 10;
+                this.location -= 5;
             break;
 
             case 'ArrowRight':
-                this.location += 10;
+                this.location += 5;
             break;
+            default:
         }
     }
     this.shoot = () => {
-        alert('fire!');
+        console.log('fire!');
+    }
+    this.explode = () => {
+        
     }
 }
 
-function bullet(){
+function bullet(shooter, x, y){
+    this.type = shooter === 'player' ? 1 : 0;
 
-    this.fire = function(){
-
+    this.location = y;
+    this.x = x;
+    
+    this.move = function(){
+        
     }
 }
 
+
+
+function gameLoop(){
+    counter++;
+    ctx.clearRect(0,0,canvas.width, canvas.height)
+    if (counter == 15){
+        horde.move();
+        counter = 0;
+    }
+    alienShip.move();
+    horde.draw();
+    alienShip.draw();
+    if(player.keyPressed){
+        player.move(player.keyPressed);
+    }
+
+    player.draw();    
+    window.requestAnimationFrame(gameLoop);
+}
+
+function renderShapeFromLogic(logicGrid, locx, locy, pixelSize, color){
+    let start = locx;
+
+    ctx.beginPath();
+    for(let i = 0; i < logicGrid.length; i++){
+        for(let j = 0; j < logicGrid[0].length; j++){
+            if(logicGrid[i][j]){
+                ctx.rect(locx,locy,pixelSize,pixelSize);
+            }
+            locx += pixelSize;
+        }
+    locy += pixelSize;
+    locx = start;
+    }
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+
+}
+
+var moveDirection = 1;
+
+var alienShip = new ufo();
+let animationState = 1;
+let startLocation = 0;
+let counter = 0;
+
+const player = new defender 
+window.requestAnimationFrame(gameLoop);
+
+//key listeners. Checks for keyup/keydown to smooth out player animations.
 document.addEventListener('keydown',(e) =>{
     let key = e.key;
 
     if (key === 'ArrowLeft' || key === 'ArrowRight'|| key === ' '){
         if(key === ' '){
             player.shoot();
-        }else player.move(key);
+        }else player.keyPressed = key;
     }
 
 })
+document.addEventListener('keyup', (e) => {
+    let key = e.key;
 
-function drawAlien(){
-    if (counter == 25){
-        ctx.clearRect(0,0,canvas.width,canvas.height);
-        renderAlien(a1, startLocation, 72, 3, 'orange');
-        renderAlien(a2, startLocation, 36, 3, 'green');
-        renderAlien(a3, startLocation, 0, 3, 'blue');
-
-        if(startLocation >= 500){moveDirection = 0}
-        if(startLocation <= 0)(moveDirection =1)
-        if(moveDirection){startLocation += 8}
-        else{startLocation -= 8};
+    if(key === 'ArrowLeft' || key === 'ArrowRight'){
+        player.keyPressed = null;
     }
-    player.draw();
-    counter++;
-    window.requestAnimationFrame(drawAlien);
-}
-
-function renderAlien(alien, locx, locy, pixel, color){
-    ctx.beginPath();
-    for(let i = 0; i < 8; i++){
-        for (let j = 0; j < 14; j++){
-            if(animationState){
-                if(alien.logic1[i][j]){
-                    ctx.rect(locx, locy, pixel,pixel);
-                }
-            }else{
-                if(alien.logic2[i][j]){
-                    ctx.rect(locx, locy, pixel,pixel);
-                }               
-            }
-            locx +=pixel;
-        }
-        locy += pixel;
-        locx = startLocation;
-    }
-    ctx.closePath();
-    ctx.fillStyle = color;
-    ctx.fill();
-    animationState  = !animationState;
-    counter = -1;
-}
-
-var moveDirection = 1;
-var a1 = new alien1();
-var a2 = new alien2();
-var a3 = new alien3();
-let animationState = 1;
-let startLocation = 0;
-let counter = 0;
-
-const player = new defender 
-window.requestAnimationFrame(drawAlien);
+})

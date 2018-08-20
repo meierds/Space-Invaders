@@ -1,3 +1,8 @@
+/*add to Game object: collision detection, remove from each  individual object. 
+    add initialization conditions in an init function, remove global objects.
+    add images to image handler
+*/
+
 const canvas = document.getElementById("myCanvas");
 const ctx = canvas.getContext("2d");
 var invaderSprites = new Image();
@@ -6,7 +11,7 @@ invaderSprites.src = "images/aliens.png";
 defenderSprite.src = "images/ship.png";
 var explosionSprite = new Image();
 explosionSprite.src = "images/explosions.png"
-explodeySound = new Audio("sounds/invaderkilled.wav");
+
 
 const Game = {
     logicboard: [],
@@ -21,6 +26,9 @@ const Game = {
             this.backgroundCounter++;
             if(this.backgroundCounter === 4) this.backgroundCounter = 0;
         }
+    },
+    imgHandler: {
+        defenderSprite: new Image()
     },
     pixelSize: 3,
     gridWidth: Math.floor(canvas.width/3),
@@ -47,7 +55,32 @@ const Game = {
         if(!horde.checkCollision()){
             alienShip.checkCollision();
         }
+
+        horde.bullets.forEach((bullet) =>{
+            if(bullet.display){
+                if(player.withinHitbox(bullet)){
+                    this.playState = false;
+                }
+            }
+        })
+    },
+    roll: function(chance){
+        if(Math.random() > 1 - chance) return true;
+        else return false;
+    },
+    randomDecisions: function(){
+        if(alienShip.display === false){
+            if(this.roll(.025)){
+                alienShip.display = true;
+            }
+        }
+        horde.bullets.forEach((bullet) => {
+            if(bullet.display === false){
+                if(this.roll(.2)) horde.shoot();
+            }
+        })
     }
+    
 }
 function alien(alienType, x, y){
     this.alienType = alienType;
@@ -152,6 +185,7 @@ function alien(alienType, x, y){
         }
         Game.explosionHandler.push(new explosion(key, this.location,this.size[0] *Game.pixelSize,this.size[1]* Game.pixelSize))
     }
+
 }
 
 const horde = {
@@ -249,6 +283,31 @@ const horde = {
         }
 
         return false;
+    },
+
+    bullets: [new bullet('alien'), new bullet('alien'), new bullet('alien')],
+
+    shoot: function(){
+        let count = 0;
+        let flag = false;
+
+        do {
+            if(!this.bullets[count].display){
+                this.bullets[count].display = true;
+                this.bullets[count].location = this.getRandomAlien();
+                this.bullets[count].location.x += (this.aliens[0][0].size[0] * Game.pixelSize)/2;
+                this.bullets[count].location.y += this.aliens[0][0].size[1] * Game.pixelSize;
+                flag = true;
+            }
+            count++;
+        } while(count < this.bullets.length && !flag)
+    }, 
+
+    getRandomAlien: function(){
+        let row = Math.floor(Math.random() * (this.aliens.length - 1));
+        let col = Math.floor(Math.random() * (this.aliens[row].length - 1));
+
+        return new Point(this.aliens[row][col].location.x, this.aliens[row][col].location.y);
     }
 }
 
@@ -263,7 +322,7 @@ function Point(x,y){
 
 function explosion(start,location, width, height){
     this.image = explosionSprite;
-    this.sound = explodeySound;
+    this.sound = Game.soundHandler.explodeySound;
     this.soundPlayed = false;
     this.sy = 0;
     this.sheight = 64;
@@ -287,7 +346,7 @@ horde.populate();
 function ufo(){
     this.location = new Point(0,0);
     this.size = [16,7];
-    this.display = true;
+    this.display = false;
     this.direction = 0;
     this.draw = function(){
         if(this.display) renderShapeFromLogic(this.logic,this.location.x,0,3,'red');
@@ -312,6 +371,7 @@ function ufo(){
     this.checkCollision = function(){
         if(this.withinHitbox(player.Bullet)){
             this.display = false;
+            this.location.x = -10;
             this.explode();
             //show explosion animation
         }
@@ -341,26 +401,26 @@ function defender(){
         [1,1,1,1,1,1,1,1,1,1,1,1,1]
     ]
     
-    this.location = canvas.width/2;
+    this.location = new Point(canvas.width/2, canvas.height - 25);
     this.image = defenderSprite;
     this.keyPressed = null;
 
     this.draw = function(){
-        ctx.clearRect(0,canvas.height - 25, canvas.width, 25);
-        ctx.drawImage(this.image,this.location, canvas.height - 25,39,24);
+        ctx.clearRect(0,this.location.y, canvas.width, 25);
+        ctx.drawImage(this.image,this.location.x, this.location.y,39,24);
     };
 
     this.move = function(key){
         switch (key) {
             case 'ArrowLeft':
-                if(this.location >= 0){
-                    this.location -= 5;
+                if(this.location.x >= 0){
+                    this.location.x -= 5;
                 }
             break;
 
             case 'ArrowRight':
-                if(this.location + (this.size[0] * Game.pixelSize) <= canvas.width){
-                    this.location += 5;
+                if(this.location.x + (this.size[0] * Game.pixelSize) <= canvas.width){
+                    this.location.x += 5;
                 }
             break;
             default:
@@ -372,11 +432,21 @@ function defender(){
         if(!this.Bullet.display){
             Game.soundHandler.shoot.play();
             this.Bullet.display = true;
-            this.Bullet.location.x = this.location + (this.size[0]/2 * Game.pixelSize);
-            this.Bullet.location.y = canvas.height - 25;            
+            this.Bullet.location.x = this.location.x + (this.size[0]/2 * Game.pixelSize);
+            this.Bullet.location.y = this.location.y;            
         }
 
     }
+
+    this.withinHitbox = function(obj){
+        if(obj.location.x >= this.location.x && obj.location.x <= this.location.x + (this.size[0]*Game.pixelSize)){
+            if(obj.location.y >= this.location.y && obj.location.y <= this.location.y + (this.size[1]*Game.pixelSize)){
+                return true;
+            }
+        }
+        return false;
+    }
+
     this.explode = () => {
         
     }
@@ -385,13 +455,19 @@ function defender(){
 function bullet(shooter){
     this.type = shooter === 'player' ? 1 : 0;
     this.display = false;
-    this.location = new Point(0,0);
+    this.location = new Point(-50,-50);
     this.speed = 4 * Game.pixelSize;
 
     this.move = function(){
         if(this.type == 1){
             this.location.y -= this.speed;
         }else this.location.y += this.speed;
+
+        if(this.location.y > canvas.height || this.location.y < 0){
+            this.display = false;
+            this.location.x = -50;
+            this.location.y = -50;
+        }
     }
     this.draw = () =>{
         ctx.beginPath();
@@ -409,6 +485,7 @@ function gameLoop(){
         horde.move();
         counter = 0;
         Game.soundHandler.playBackground();
+        Game.randomDecisions();
     }
     alienShip.move();
     horde.draw();
@@ -430,7 +507,15 @@ function gameLoop(){
             if(--e.delay == 0) Game.explosionHandler.shift();
         });
     }
-    player.draw();   
+
+    horde.bullets.forEach((bullet) => {
+        if(bullet.display) {
+            bullet.draw();
+            bullet.move()
+        }
+    })
+    player.draw(); 
+
     Game.collisionHandler();
     if(Game.playState){ 
         window.requestAnimationFrame(gameLoop);
@@ -456,12 +541,11 @@ function renderShapeFromLogic(logicGrid, locx, locy, pixelSize, color){
     ctx.fill();
 }
 
-var moveDirection = 1;
-
 var alienShip = new ufo();
 let counter = 0;
 
-const player = new defender 
+const player = new defender(); 
+
 window.requestAnimationFrame(gameLoop);
 
 //key listeners. Checks for keyup/keydown to smooth out player animations.

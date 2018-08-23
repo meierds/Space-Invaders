@@ -1,6 +1,8 @@
 /*add to Game object: collision detection, remove from each  individual object. 
     add initialization conditions in an init function, remove global objects.
     add images to image handler
+    remove hashkey/logic board
+    (eventually) add in powerups?
 */
 
 const canvas = document.getElementById("myCanvas");
@@ -28,20 +30,25 @@ const Game = {
         }
     },
     imgHandler: {
-        defenderSprite: new Image()
+        bulletSprite: new Image()
     },
+    counter: 0,
     pixelSize: 3,
     gridWidth: Math.floor(canvas.width/3),
     gridHeight: Math.floor(canvas.height/3),
     playState: true,
     explosionHandler: [],
-    hashkey: (p) => {
-        let hash = p.y* Game.gridWidth + p.x;
-        return hash;
-    },
-    init: function(){
+    barriers: [new barrier(Math.floor((canvas.width - ((22 *  3) * 3))/ 3)), new barrier(this.barrierSpacing * 2), new barrier(this.barrierSpacing * 3)],
 
+    init: function(){
+        this.imgHandler.bulletSprite.src = "images/invader_bomb.png";
+        let spacing = canvas.width/4 ;
+
+        this.barriers.forEach((barrier, i) => {
+            barrier.location.x = spacing * (i+ 1) - this.barriers[0].logic[0].length * this.pixelSize;
+        })
     },
+
     animate: function(){
         ctx.clearRect(0,0,canvas.width,canvas.height);
         player.draw();
@@ -52,15 +59,31 @@ const Game = {
 
     collisionHandler: function(){
         //check each alien if it has collided with a bullet. Check each barrier. Check player for bullet collisions
+        if(player.Bullet.location.y > Game.barriers[0].location.y){
+            Game.barriers.forEach((barrier) => {
+                if(this.withinHitbox(player.Bullet, barrier)){
+                    if(barrier.destroy(player.Bullet.location.x, player.Bullet.location.y)) {
+                        player.Bullet.display = false;
+                        player.Bullet.location.y = -25;
+                    }
+                }
+            })
+        }
         if(!horde.checkCollision()){
             alienShip.checkCollision();
         }
 
         horde.bullets.forEach((bullet) =>{
-            if(bullet.display){
+            if(bullet.display && bullet.location.y > Game.barriers[0].location.y - 6){
                 if(player.withinHitbox(bullet)){
                     this.playState = false;
                 }
+                
+                this.barriers.forEach((barrier) => {
+                    if(this.withinHitbox(bullet, barrier)){
+                        if(barrier.destroy(bullet.location.x, bullet.location.y)) bullet.display = false;
+                    }
+                })
             }
         })
     },
@@ -72,16 +95,29 @@ const Game = {
         if(alienShip.display === false){
             if(this.roll(.025)){
                 alienShip.display = true;
+                alienShip.location.x = 1;
             }
         }
         horde.bullets.forEach((bullet) => {
             if(bullet.display === false){
-                if(this.roll(.2)) horde.shoot();
+                if(this.roll(.12)) horde.shoot();
             }
         })
+    },
+
+    withinHitbox: function(obj1, obj2){
+        if(obj1.location.x >= obj2.location.x && obj1.location.x <= obj2.location.x + (obj2.size[0]*Game.pixelSize)){
+            if(obj1.location.y >= obj2.location.y && obj1.location.y <= obj2.location.y + (obj2.size[1]*Game.pixelSize)){
+                return true;
+            }
+        }
+        return false;
     }
     
 }
+
+Game.init();
+
 function alien(alienType, x, y){
     this.alienType = alienType;
     this.location = new Point(x,y);
@@ -189,7 +225,7 @@ function alien(alienType, x, y){
 }
 
 const horde = {
-    aliens: [[],[],[],[],[]],
+    aliens: [],
     moveSpeed: 20,
     movementdirection: 1,
     directionFlag: false,
@@ -202,6 +238,9 @@ const horde = {
     exlosion: [],
 
     populate: function(){
+        this.aliens = [[],[],[],[],[]];
+        this.location.x = 0;
+        this.movementdirection = 1;
         for(let i = 1; i <= 10; i++) {
             this.aliens[0].push(new alien(3, this.location.x + (this.sideSpacing * i), this.location.y));
             this.aliens[1].push(new alien(2, this.location.x + (this.sideSpacing * i) , this.location.y + (this.topSpacing)));
@@ -247,7 +286,7 @@ const horde = {
         return right + horde.sideSpacing; 
     },
     getLength: function(){
-        return 1 + this.aliens.length * this.topSpacing;
+        return this.aliens.length * this.topSpacing;
     },
     getLeft: function(){
         let left = Array.from(this.aliens, x => x[0].location.x)
@@ -295,7 +334,7 @@ const horde = {
             if(!this.bullets[count].display){
                 this.bullets[count].display = true;
                 this.bullets[count].location = this.getRandomAlien();
-                this.bullets[count].location.x += (this.aliens[0][0].size[0] * Game.pixelSize)/2;
+                this.bullets[count].location.x += (Math.random() * this.aliens[0][0].size[0]) * Game.pixelSize;
                 this.bullets[count].location.y += this.aliens[0][0].size[1] * Game.pixelSize;
                 flag = true;
             }
@@ -304,8 +343,8 @@ const horde = {
     }, 
 
     getRandomAlien: function(){
-        let row = Math.floor(Math.random() * (this.aliens.length - 1));
-        let col = Math.floor(Math.random() * (this.aliens[row].length - 1));
+        let row = Math.floor(Math.random() * (this.aliens.length));
+        let col = Math.floor(Math.random() * (this.aliens[row].length));
 
         return new Point(this.aliens[row][col].location.x, this.aliens[row][col].location.y);
     }
@@ -318,6 +357,71 @@ function Point(x,y){
     this.convertToGrid = () => {
         return[this.x/Game.pixelSize, this.y/Game.pixelSize];
     }
+}
+
+function barrier(x){
+    this.location = new Point(x,canvas.height - 25 - 30 - (16 * 3));
+    this.size = [22,16];
+    this.removalSize = 1;
+    this.logic = [
+        [0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0],
+        [0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0],
+        [0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0],
+        [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0],
+        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+        [1,1,1,1,1,1,1,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1],
+        [1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1],
+        [1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1],
+        [1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1]
+    ];
+    this.color = 'green';
+    this.draw = function(){
+        renderShapeFromLogic(this.logic,this.location.x, this.location.y, Game.pixelSize, this.color)
+    }
+    this.destroy = function(collidedObjX, collidedObjY){
+        let xIndex = Math.floor((collidedObjX - this.location.x)/Game.pixelSize);
+        let directionFlag = collidedObjY > this.location.y + 20 ? 1 : 0;
+        let foundFlag = false;
+        let yIndex;
+
+        //finds the yIndex of the next in tact piece of the barrier at a given x location.
+        if(directionFlag){
+            for(let i = this.logic.length - 1; i >= 0; i--){
+                if(this.logic[i][xIndex] && !foundFlag){
+                    yIndex = i - 2;
+                    foundFlag = true;
+                }
+            }
+        }else{
+            for(let i = 0; i < this.logic.length; i++){
+                if(this.logic[i][xIndex] && !foundFlag){
+                    yIndex = i;
+                    foundFlag = true;
+                }
+            }
+        }
+
+        //creates the destruction pattern if a piece of barrier was found
+        if(foundFlag){
+            for(let i = 0; i < 3; i++){
+                for(let j = -this.removalSize; j < this.removalSize; j++){
+                    if(yIndex + i >= 0 && yIndex + i < 16 && xIndex + j >= 0 && xIndex + j < 22)
+                    this.logic[yIndex + i][xIndex + j] = 0;
+                }
+            }
+            return true;
+        }
+        else return false;
+    }
+
+    this.checkCollision
 }
 
 function explosion(start,location, width, height){
@@ -353,7 +457,7 @@ function ufo(){
     }
     this.move = function(){
         if(this.display){
-            ctx.clearRect(0, 0, canvas.width, 21);
+            //ctx.clearRect(0, 0, canvas.width, 21);
             if(this.direction) this.location.x -= 3;
             else this.location.x += 3;
             if(this.location.x >= 950 || this.location.x <= 0) this.direction = this.direction ? 0 : 1;
@@ -371,9 +475,8 @@ function ufo(){
     this.checkCollision = function(){
         if(this.withinHitbox(player.Bullet)){
             this.display = false;
-            this.location.x = -10;
             this.explode();
-            //show explosion animation
+            this.location.x = -100;
         }
     }
     this.explode = function(){
@@ -406,7 +509,6 @@ function defender(){
     this.keyPressed = null;
 
     this.draw = function(){
-        ctx.clearRect(0,this.location.y, canvas.width, 25);
         ctx.drawImage(this.image,this.location.x, this.location.y,39,24);
     };
 
@@ -459,17 +561,19 @@ function bullet(shooter){
     this.speed = 4 * Game.pixelSize;
 
     this.move = function(){
-        if(this.type == 1){
-            this.location.y -= this.speed;
-        }else this.location.y += this.speed;
+        if(this.display){
+            if(this.type == 1){
+                this.location.y -= this.speed;
+            }else this.location.y += this.speed;
 
-        if(this.location.y > canvas.height || this.location.y < 0){
-            this.display = false;
-            this.location.x = -50;
-            this.location.y = -50;
+            if(this.location.y > canvas.height || this.location.y < 0){
+                this.display = false;
+                this.location.x = -50;
+                this.location.y = -50;
+            }
         }
     }
-    this.draw = () =>{
+    this.draw = () => {
         ctx.beginPath();
         ctx.rect(this.location.x, this.location.y, Game.pixelSize, Game.pixelSize * 2);
         ctx.closePath();
@@ -479,11 +583,11 @@ function bullet(shooter){
 }
 
 function gameLoop(){
-    counter++;
+    Game.counter++;
     ctx.clearRect(0,0,canvas.width, canvas.height)
-    if (counter === horde.moveSpeed && horde.aliens.length >= 1){
+    if (Game.counter === horde.moveSpeed && horde.aliens.length >= 1){
         horde.move();
-        counter = 0;
+        Game.counter = 0;
         Game.soundHandler.playBackground();
         Game.randomDecisions();
     }
@@ -508,6 +612,10 @@ function gameLoop(){
         });
     }
 
+    Game.barriers.forEach((bar) => {
+        bar.draw()
+    })
+
     horde.bullets.forEach((bullet) => {
         if(bullet.display) {
             bullet.draw();
@@ -516,6 +624,9 @@ function gameLoop(){
     })
     player.draw(); 
 
+    if(horde.aliens.length === 0){
+        horde.populate();
+    }
     Game.collisionHandler();
     if(Game.playState){ 
         window.requestAnimationFrame(gameLoop);
@@ -541,9 +652,12 @@ function renderShapeFromLogic(logicGrid, locx, locy, pixelSize, color){
     ctx.fill();
 }
 
-var alienShip = new ufo();
-let counter = 0;
+function renderShapeFromSprite(){
+    ctx.drawImage();
+}
 
+var alienShip = new ufo();
+Game.init();
 const player = new defender(); 
 
 window.requestAnimationFrame(gameLoop);
